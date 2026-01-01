@@ -1,0 +1,7 @@
+.vscode/
+bin/
+include/
+*.user.*
+*.user
+build/
+default/

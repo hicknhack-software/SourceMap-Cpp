@@ -1,0 +1,1 @@
+conan install . -g=QbsDeps --output-folder=R:\sourceMap-debug --build missing --settings=build_type=Debug
