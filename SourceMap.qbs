@@ -1,27 +1,42 @@
+import qbs.FileInfo
+
 Project {
     name: "SourceMap-Cpp"
 
     property string version: "2.0.0"
+    property string configProductName: "SourceMapConfig"
+    property bool enableQbsImports: (sourceDirectory === path)
     property bool enableTests: (sourceDirectory === path)
+    property bool enableThirdParty: true
 
     minimumQbsVersion: "3.1"
-    qbsModuleProviders: "conan"
+    qbsSearchPaths: enableQbsImports ? ["qbs"] : []
 
+    Product {
+        name: "SourceMapConfig"
+        condition: configProductName === "SourceMapConfig"
+
+        Export {
+            cpp.cxxLanguageVersion: "c++23"
+
+            Depends { name: "cpp" }
+        }
+    }
     StaticLibrary {
         name: "SourceMapLibrary"
-        version: project.version
+        version: parent.version
 
-        cpp.cxxLanguageVersion: "c++23"
         cpp.includePaths: "src"
 
         Depends { name: "cpp" }
         Depends { name: "nlohmann_json" }
+        Depends { name: parent.configProductName }
         Export {
-            cpp.cxxLanguageVersion: "c++23"
-            cpp.includePaths: exportingProduct.sourceDirectory + "/src"
+            cpp.includePaths: FileInfo.joinPaths(exportingProduct.sourceDirectory, "src")
 
             Depends { name: "cpp" }
             Depends { name: "nlohmann_json" }
+            Depends { name: exportingProduct.parent.configProductName }
         }
         Group {
             name: "sources"
@@ -57,12 +72,15 @@ Project {
         condition: parent.enableTests
         filePath: "test/test.qbs"
     }
+    SubProject {
+        condition: parent.enableThirdParty
+        filePath: "third_party/third_party.qbs"
+    }
     Product {
         name: "[sourcemap extra files]"
         files: [
             ".clang-format",
             "CHANGES",
-            "conanfile.txt",
             "LICENSE",
             "NOTICE",
             "README.md",
