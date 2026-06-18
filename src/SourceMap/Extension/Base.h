@@ -20,6 +20,7 @@
 
 #include <string>
 #include <utility>
+#include <functional>
 
 namespace SourceMap {
 

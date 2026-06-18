@@ -19,6 +19,7 @@
 #pragma once
 #include <string>
 #include <utility>
+#include <functional>
 
 /// Base 64 encoded variable length encoding for signed integer values
 namespace SourceMap::intern::Base64VLQ {
