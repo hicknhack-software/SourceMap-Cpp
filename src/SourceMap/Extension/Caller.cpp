@@ -178,7 +178,7 @@ auto jsonDecodeCallerList(RevisionThree const& json) -> CallerList {
     if (!callerObject.contains(CALLERS_KEY)) return result;
 
     auto const sourceNameAt = [sources = json.sources()](int i) -> std::filesystem::path {
-        return i >= 0 && i < sources.size() ? sources[i] : std::filesystem::path{};
+        return i >= 0 && static_cast<size_t>(i) < sources.size() ? sources[static_cast<size_t>(i)] : std::filesystem::path{};
     };
 
     auto const encodedCallers = callerObject[CALLERS_KEY].get<std::string>();
@@ -206,9 +206,9 @@ auto jsonDecodeCallerList(RevisionThree const& json) -> CallerList {
                 .original =
                     FilePosition{
                         .name = sourceNameAt(callerSourceIndex),
-                        .position = Position{callerSourceLine, callerSourceColumn},
+                        .position = Position{.line = callerSourceLine, .column = callerSourceColumn},
                     },
-                .parentIndex = callerParentIndex,
+                .parentIndex = CallerIndex{.value = callerParentIndex},
             });
     }
     return result;

@@ -60,8 +60,9 @@ constexpr auto char_to_value = []() -> std::array<uint8_t, 128> {
 }();
 
 constexpr auto base64_decode(string::value_type chr) -> int {
-    if (chr < 0 || chr >= 128) return invalid_digit;
-    return char_to_value.at(chr);
+    auto const index = static_cast<unsigned char>(chr);
+    if (index >= char_to_value.size()) return invalid_digit;
+    return char_to_value.at(index);
 }
 
 /**

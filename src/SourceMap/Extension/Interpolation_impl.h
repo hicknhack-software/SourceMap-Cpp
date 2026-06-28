@@ -26,8 +26,6 @@ namespace SourceMap {
 template<typename... ExtensionTypes>
 auto getOriginalPositionFromGenerated(Mapping<ExtensionTypes...> const& mapping, Position const& position)
     -> FilePosition {
-    using Entry = typename Mapping<ExtensionTypes...>::Entry;
-
     auto const* entry = mapping.findEntryByGenerated(position);
     if (entry == nullptr) {
         return {};

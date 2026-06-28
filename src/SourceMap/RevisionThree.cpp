@@ -52,10 +52,10 @@ void jsonDecodeMappings(
     RevisionThree const& json,
     std::move_only_function<void(Position&& generated, FilePosition&& original, std::string&& name)> callback) {
     auto const sourceNameAt = [sources = json.sources()](int i) -> std::filesystem::path {
-        return (i >= 0 && i < sources.size()) ? sources[i] : std::filesystem::path{};
+        return (i >= 0 && static_cast<size_t>(i) < sources.size()) ? sources[static_cast<size_t>(i)] : std::filesystem::path{};
     };
     auto const entryNameAt = [nameList = json.names()](int i) -> std::string {
-        return (i >= 0 && i < nameList.size()) ? nameList[i] : std::string{};
+        return (i >= 0 && static_cast<size_t>(i) < nameList.size()) ? nameList[static_cast<size_t>(i)] : std::string{};
     };
 
     auto const encodedMappings = json.json().value(MAPPINGS_KEY, std::string{});
