@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 HicknHack Software GmbH
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 #define CATCH_CONFIG_DEFAULT_REPORTER "console"
