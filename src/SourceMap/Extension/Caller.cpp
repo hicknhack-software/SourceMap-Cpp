@@ -128,27 +128,29 @@ auto jsonDecodeCallerIndices(RevisionThree const& json) -> CallerIndexList {
     if (!callerObject.contains(CALLER_INDICES_KEY)) return result;
 
     auto const encoded = callerObject[CALLER_INDICES_KEY].get<std::string>();
-    auto begin = encoded.begin();
-    auto const end = encoded.end();
+    auto mappingLines = std::string_view{json.json().at("mappings").get_ref<std::string const&>()};
+    auto indexLines = std::string_view{encoded};
     auto lastIndex = 0;
-    auto lastWasDelim = true;
-    while (begin != end) {
-        if (*begin == ENTRY_DELIMITER || *begin == SEGMENT_DELIMITER) {
-            ++begin;
-            if (lastWasDelim) {
-                result.push_back(CallerIndex{InvalidCallerIndex});
-            }
-            lastWasDelim = true;
-            continue;
+    auto take = [](std::string_view& remaining, char delimiter) {
+        auto separator = remaining.find(delimiter);
+        auto part = remaining.substr(0, separator);
+        remaining = separator == remaining.npos ? std::string_view{} : remaining.substr(separator + 1);
+        return part;
+    };
+    // Empty extension segments mean "no caller", but empty mapping lines have
+    // no entries at all. Use the base mappings to distinguish the two cases.
+    while (!mappingLines.empty()) {
+        auto mappingLine = take(mappingLines, ENTRY_DELIMITER);
+        auto indexLine = take(indexLines, ENTRY_DELIMITER);
+        while (!mappingLine.empty()) {
+            take(mappingLine, SEGMENT_DELIMITER);
+            auto segment = std::string{take(indexLine, SEGMENT_DELIMITER)};
+            auto begin = segment.cbegin();
+            auto index = InvalidCallerIndex;
+            if (!segment.empty() && Base64VLQ::decode(begin, segment.cend(), std::ref(index)))
+                lastIndex = (index += lastIndex);
+            result.push_back(CallerIndex{index});
         }
-        lastWasDelim = false;
-        auto index = InvalidCallerIndex;
-        auto success = Base64VLQ::decode(begin, end, std::ref(index));
-        if (success) lastIndex = (index += lastIndex);
-        result.push_back(CallerIndex{index});
-    }
-    if (lastWasDelim) {
-        result.push_back(CallerIndex{InvalidCallerIndex});
     }
     return result;
 }
@@ -163,7 +165,8 @@ auto jsonDecodeCallerList(RevisionThree const& json) -> CallerList {
     if (!callerObject.contains(CALLERS_KEY)) return result;
 
     auto const sourceNameAt = [sources = json.sources()](int i) -> std::filesystem::path {
-        return i >= 0 && static_cast<size_t>(i) < sources.size() ? sources[static_cast<size_t>(i)] : std::filesystem::path{};
+        return i >= 0 && static_cast<size_t>(i) < sources.size() ? sources[static_cast<size_t>(i)]
+                                                                 : std::filesystem::path{};
     };
 
     auto const encodedCallers = callerObject[CALLERS_KEY].get<std::string>();
@@ -176,7 +179,9 @@ auto jsonDecodeCallerList(RevisionThree const& json) -> CallerList {
 
     auto sourceIndex = 0;
     auto sourcePosition = Position{.line = 1, .column = 1};
-    auto parentIndex = CallerIndex{};
+    // Match encodeCallerList's delta accumulator. An omitted parent remains -1,
+    // but the initial reference for an encoded parent index is zero.
+    auto parentIndex = CallerIndex{0};
     while (begin != end) {
         if (*begin == ENTRY_DELIMITER) {
             begin++;

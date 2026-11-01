@@ -44,8 +44,8 @@ void injectCallerIndices(std::reference_wrapper<Data> data, intern::CallerIndexL
     auto begin = list.begin();
     auto end = list.end();
     for (auto& entry : data.get().entries) {
-        SourceMap::get<SourceMap::Extension::Caller>(entry) = *begin++;
         if (begin == end) break;
+        SourceMap::get<SourceMap::Extension::Caller>(entry) = *begin++;
     }
 }
 

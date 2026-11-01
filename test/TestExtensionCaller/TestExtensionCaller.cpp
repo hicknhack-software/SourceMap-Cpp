@@ -145,3 +145,74 @@ TEST_CASE("Caller Extension RevisionThree", "[Extension][Caller]") {
     REQUIRE(p2.size() == 2u);
     REQUIRE(p2[0] == FilePosition(SOURCE_TWO, {40, 10}));
 }
+
+TEST_CASE("Caller graph survives serialization with root zero, siblings, and separate roots", "[Extension][Caller]") {
+    auto const callers = CallerList{
+        Caller{{"input://root", {1, 1}}, CallerIndex{-1}},
+        Caller{{"template://outer", {2, 3}}, CallerIndex{0}},
+        Caller{{"template://inner", {4, 5}}, CallerIndex{1}},
+        Caller{{"input://other-root", {6, 7}}, CallerIndex{-1}},
+        Caller{{"template://other", {8, 9}}, CallerIndex{3}},
+        Caller{{"template://sibling", {10, 11}}, CallerIndex{0}},
+    };
+    auto data = Data{.extensionData = std::make_tuple(callers)};
+    for (auto index = 0; index < static_cast<int>(callers.size()); ++index)
+        data.entries.push_back(
+            Entry{
+                .generated = {index + 1, 1},
+                .original = {SOURCE_ONE, {index + 1, 1}},
+                .extensionData = std::make_tuple(CallerIndex{index}),
+            });
+    auto original = Mapping{std::move(data)};
+    auto json = SourceMap::RevisionThree{};
+    json.encodeMappings(original);
+    auto decoded = Mapping{SourceMap::RevisionThree::fromJson(json.toJson()).decodedMappings<Data>()};
+    REQUIRE(SourceMap::get<SourceMap::Extension::Caller>(decoded.data()) == callers);
+    for (auto line = 1; line <= static_cast<int>(callers.size()); ++line) {
+        auto before = original.findEntryByGenerated({line, 1});
+        auto after = decoded.findEntryByGenerated({line, 1});
+        REQUIRE(after);
+        CHECK(SourceMap::buildCallerStack(decoded, after) == SourceMap::buildCallerStack(original, before));
+    }
+}
+
+TEST_CASE("Caller indices stay aligned across empty mapping lines and unmapped segments", "[Extension][Caller]") {
+    auto original = Mapping{Data{
+        .entries =
+            {
+                Entry{
+                    .generated = {2, 1},
+                    .original = {SOURCE_ONE, {1, 1}},
+                    .extensionData = std::make_tuple(CallerIndex{2})},
+                Entry{.generated = {4, 1}},
+                Entry{
+                    .generated = {4, 5},
+                    .original = {SOURCE_ONE, {1, 2}},
+                    .extensionData = std::make_tuple(CallerIndex{1})},
+                Entry{.generated = {4, 9}},
+                Entry{
+                    .generated = {7, 1},
+                    .original = {SOURCE_ONE, {1, 3}},
+                    .extensionData = std::make_tuple(CallerIndex{0})},
+            },
+        .extensionData = std::make_tuple(buildCallerList()),
+    }};
+    auto json = SourceMap::RevisionThree{};
+    json.encodeMappings(original);
+    auto decoded = Mapping{SourceMap::RevisionThree::fromJson(json.toJson()).decodedMappings<Data>()};
+    REQUIRE(decoded.data().entries.size() == original.data().entries.size());
+    for (auto index = size_t{}; index < original.data().entries.size(); ++index)
+        CHECK(
+            SourceMap::get<SourceMap::Extension::Caller>(decoded.data().entries[index]) ==
+            SourceMap::get<SourceMap::Extension::Caller>(original.data().entries[index]));
+}
+
+TEST_CASE("Maps without a caller extension retain invalid caller indices", "[Extension][Caller]") {
+    auto json = SourceMap::RevisionThree{};
+    json.encodeMappings(Mapping{Data{.entries = buildEntries(), .extensionData = std::make_tuple(buildCallerList())}});
+    json.json().erase("x_de_hicknhack_software_callstack");
+    auto decoded = json.decodedMappings<Data>();
+    CHECK(SourceMap::get<SourceMap::Extension::Caller>(decoded).empty());
+    for (auto const& entry : decoded.entries)
+        CHECK(SourceMap::get<SourceMap::Extension::Caller>(entry).value == SourceMap::InvalidCallerIndex);
+}
