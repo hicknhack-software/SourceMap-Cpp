@@ -62,6 +62,8 @@ Project {
                 "Mapping_impl.h",
                 "meta/tuple_without_void.h",
                 "Position.h",
+                "SourcePath.h",
+                "TextPosition.h",
                 "RevisionThree.cpp",
                 "RevisionThree.h",
                 "RevisionThree_impl.h",

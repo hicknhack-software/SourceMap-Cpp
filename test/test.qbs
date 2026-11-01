@@ -7,6 +7,7 @@ Project {
         "TestMapping/TestMapping.qbs",
         "TestRevisionThree/TestRevisionThree.qbs",
         "TestStructs/TestStructs.qbs",
+        "TestSourcePaths/TestSourcePaths.qbs",
     ]
 
     AutotestRunner {}
